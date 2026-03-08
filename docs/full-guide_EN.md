@@ -34,6 +34,7 @@ daily_stock_analysis/
 - [Notification Channel Configuration](#notification-channel-configuration)
 - [Data Source Configuration](#data-source-configuration)
 - [Advanced Features](#advanced-features)
+- [Backtesting](#backtesting)
 - [Local WebUI Management Interface](#local-webui-management-interface)
 
 ---
@@ -82,6 +83,7 @@ Go to your forked repo → `Settings` → `Secrets and variables` → `Actions` 
 | `SERVERCHAN3_SENDKEY` | ServerChan v3 Sendkey ([Get here](https://sc3.ft07.com/), mobile app push service) | Optional |
 | `CUSTOM_WEBHOOK_URLS` | Custom Webhook (supports DingTalk, etc., comma-separated) | Optional |
 | `CUSTOM_WEBHOOK_BEARER_TOKEN` | Bearer Token for custom webhooks (for authenticated webhooks) | Optional |
+| `WEBHOOK_VERIFY_SSL` | Verify Webhook HTTPS certificates (default true). Set to false for self-signed certs. WARNING: Disabling has serious security risk (MITM), use only on trusted internal networks | Optional |
 
 > *Note: Configure at least one channel; multiple channels will all receive notifications
 
@@ -138,16 +140,22 @@ Default schedule: Every weekday at **18:00 (Beijing Time)** automatic execution.
 
 ### AI Model Configuration
 
+> Full details: [LLM Config Guide](LLM_CONFIG_GUIDE_EN.md) (three-tier config, channels, Vision, Agent, troubleshooting).
+
 | Variable | Description | Default | Required |
 |--------|------|--------|:----:|
-| `GEMINI_API_KEY` | Google Gemini API Key | - | ✅* |
-| `GEMINI_MODEL` | Primary model name | `gemini-3-flash-preview` | No |
-| `GEMINI_MODEL_FALLBACK` | Fallback model | `gemini-2.5-flash` | No |
+| `LITELLM_MODEL` | Primary model, format `provider/model` (e.g. `gemini/gemini-2.5-flash`), recommended | - | No |
+| `LITELLM_FALLBACK_MODELS` | Fallback models, comma-separated | - | No |
+| `LLM_CHANNELS` | Channel names (comma-separated), use with `LLM_{NAME}_*`, see [LLM Config Guide](LLM_CONFIG_GUIDE_EN.md) | - | No |
+| `LITELLM_CONFIG` | LiteLLM YAML config path (advanced) | - | No |
+| `GEMINI_API_KEY` | Google Gemini API Key | - | Optional |
+| `GEMINI_MODEL` | Primary model name (legacy, `LITELLM_MODEL` preferred) | `gemini-3-flash-preview` | No |
+| `GEMINI_MODEL_FALLBACK` | Fallback model (legacy) | `gemini-2.5-flash` | No |
 | `OPENAI_API_KEY` | OpenAI-compatible API Key | - | Optional |
 | `OPENAI_BASE_URL` | OpenAI-compatible API endpoint | - | Optional |
-| `OPENAI_MODEL` | OpenAI model name | `gpt-4o` | Optional |
+| `OPENAI_MODEL` | OpenAI model name (legacy) | `gpt-4o` | Optional |
 
-> *Note: Configure at least one of `GEMINI_API_KEY` or `OPENAI_API_KEY`
+> *Note: Configure at least one of `GEMINI_API_KEY`, `OPENAI_API_KEY`, or `LLM_CHANNELS` / `LITELLM_CONFIG`
 
 ### Notification Channel Configuration
 
@@ -161,11 +169,13 @@ Default schedule: Every weekday at **18:00 (Beijing Time)** automatic execution.
 | `DISCORD_WEBHOOK_URL` | Discord Webhook URL | Optional |
 | `DISCORD_BOT_TOKEN` | Discord Bot Token (choose one with Webhook) | Optional |
 | `DISCORD_CHANNEL_ID` | Discord Channel ID (required when using Bot) | Optional |
+| `DISCORD_MAX_WORDS` | Discord Word Limit (default 2000 for un-upgraded servers) | Optional |
 | `EMAIL_SENDER` | Sender email | Optional |
 | `EMAIL_PASSWORD` | Email authorization code (not login password) | Optional |
 | `EMAIL_RECEIVERS` | Receiver emails (comma-separated, leave empty to send to self) | Optional |
 | `CUSTOM_WEBHOOK_URLS` | Custom Webhook (comma-separated) | Optional |
 | `CUSTOM_WEBHOOK_BEARER_TOKEN` | Custom Webhook Bearer Token | Optional |
+| `WEBHOOK_VERIFY_SSL` | Webhook HTTPS certificate verification (default true). Set to false for self-signed certs. WARNING: Disabling has serious security risk | Optional |
 | `PUSHOVER_USER_KEY` | Pushover User Key | Optional |
 | `PUSHOVER_API_TOKEN` | Pushover API Token | Optional |
 | `PUSHPLUS_TOKEN` | PushPlus Token (Chinese push service) | Optional |
@@ -206,6 +216,7 @@ Default schedule: Every weekday at **18:00 (Beijing Time)** automatic execution.
 | `STOCK_LIST` | Watchlist codes (comma-separated) | - |
 | `MAX_WORKERS` | Concurrent threads | `3` |
 | `MARKET_REVIEW_ENABLED` | Enable market review | `true` |
+| `MARKET_REVIEW_REGION` | Market review region: cn (A-shares), us (US stocks), both | `cn` |
 | `SCHEDULE_ENABLED` | Enable scheduled tasks | `false` |
 | `SCHEDULE_TIME` | Scheduled execution time | `18:00` |
 | `LOG_DIR` | Log directory | `./logs` |
@@ -226,7 +237,7 @@ cp .env.example .env
 vim .env  # Fill in API Keys and configuration
 
 # 3. Start container
-docker-compose -f ./docker/docker-compose.yml up -d webui      # WebUI mode (recommended)
+docker-compose -f ./docker/docker-compose.yml up -d server     # Web service mode (recommended, provides API & WebUI)
 docker-compose -f ./docker/docker-compose.yml up -d analyzer   # Scheduled task mode
 docker-compose -f ./docker/docker-compose.yml up -d            # Start both modes
 
@@ -234,14 +245,14 @@ docker-compose -f ./docker/docker-compose.yml up -d            # Start both mode
 # http://localhost:8000
 
 # 5. View logs
-docker-compose -f ./docker/docker-compose.yml logs -f webui
+docker-compose -f ./docker/docker-compose.yml logs -f server
 ```
 
 ### Run Mode Description
 
 | Command | Description | Port |
 |------|------|------|
-| `docker-compose -f ./docker/docker-compose.yml up -d webui` | WebUI mode, manually trigger analysis | 8000 |
+| `docker-compose -f ./docker/docker-compose.yml up -d server` | Web service mode, provides API & WebUI | 8000 |
 | `docker-compose -f ./docker/docker-compose.yml up -d analyzer` | Scheduled task mode, daily auto execution | - |
 | `docker-compose -f ./docker/docker-compose.yml up -d` | Start both modes simultaneously | 8000 |
 
@@ -484,6 +495,7 @@ System defaults to AkShare (free), also supports other data sources:
 ### YFinance
 - Free, no configuration needed
 - Supports US/HK stock data
+- US stock historical and real-time data both use YFinance exclusively to avoid technical indicator errors from akshare's US stock adjustment issues
 
 ---
 
@@ -510,7 +522,30 @@ GEMINI_MODEL=gemini-3-flash-preview
 OPENAI_API_KEY=xxx
 OPENAI_BASE_URL=https://api.deepseek.com/v1
 OPENAI_MODEL=deepseek-chat
+# Thinking mode: deepseek-reasoner, deepseek-r1, qwq auto-detected; deepseek-chat enabled by model name
 ```
+
+### LiteLLM Direct Integration (Multi-Model + Multi-Key Load Balancing)
+
+See [LLM Config Guide](LLM_CONFIG_GUIDE_EN.md). This project uses [LiteLLM](https://github.com/BerriAI/litellm) to unify all LLM calls; no separate Proxy service required.
+
+**Two-layer mechanism**: Same-model multi-key rotation (Router) and cross-model fallback are independent.
+
+**Multi-key + cross-model fallback example**:
+
+```env
+# Primary: 3 Gemini keys rotate; Router switches on 429
+GEMINI_API_KEYS=key1,key2,key3
+LITELLM_MODEL=gemini/gemini-3-flash-preview
+
+# Cross-model fallback: when all primary keys fail, try Claude → GPT
+# Requires ANTHROPIC_API_KEY, OPENAI_API_KEY
+LITELLM_FALLBACK_MODELS=anthropic/claude-3-5-sonnet-20241022,openai/gpt-4o-mini
+```
+
+> ⚠️ `LITELLM_MODEL` must include provider prefix (e.g. `gemini/`, `anthropic/`, `openai/`). Legacy `GEMINI_MODEL` (no prefix) is only used when `LITELLM_MODEL` is not set.
+
+**Vision model (image stock code extraction)**: See [LLM Config Guide - Vision](LLM_CONFIG_GUIDE_EN.md#41-vision-model-image-stock-code-extraction).
 
 ### Debug Mode
 
@@ -521,6 +556,56 @@ python main.py --debug
 Log file locations:
 - Regular logs: `logs/stock_analysis_YYYYMMDD.log`
 - Debug logs: `logs/stock_analysis_debug_YYYYMMDD.log`
+
+---
+
+## Backtesting
+
+The backtesting module automatically validates historical AI analysis records against actual price movements, evaluating the accuracy of analysis recommendations.
+
+### How It Works
+
+1. Selects `AnalysisHistory` records past the cooldown period (default 14 days)
+2. Fetches daily bar data after the analysis date (forward bars)
+3. Infers expected direction from the operation advice and compares against actual movement
+4. Evaluates stop-loss/take-profit hit conditions and simulates execution returns
+5. Aggregates into overall and per-stock performance metrics
+
+### Operation Advice Mapping
+
+| Operation Advice | Position | Expected Direction | Win Condition |
+|-----------------|----------|-------------------|---------------|
+| Buy / Add / Strong Buy | long | up | Return >= neutral band |
+| Sell / Reduce / Strong Sell | cash | down | Decline >= neutral band |
+| Hold | long | not_down | No significant decline |
+| Wait / Observe | cash | flat | Price within neutral band |
+
+### Configuration
+
+Set the following variables in `.env` (all optional, have defaults):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BACKTEST_ENABLED` | `true` | Whether to auto-run backtest after daily analysis |
+| `BACKTEST_EVAL_WINDOW_DAYS` | `10` | Evaluation window (trading days) |
+| `BACKTEST_MIN_AGE_DAYS` | `14` | Only backtest records older than N days to avoid incomplete data |
+| `BACKTEST_ENGINE_VERSION` | `v1` | Engine version, used to distinguish results when logic is updated |
+| `BACKTEST_NEUTRAL_BAND_PCT` | `2.0` | Neutral band threshold (%), ±2% treated as range-bound |
+
+### Auto-run
+
+Backtesting triggers automatically after the daily analysis flow completes (non-blocking; failures do not affect notifications). It can also be triggered manually via API.
+
+### Evaluation Metrics
+
+| Metric | Description |
+|--------|-------------|
+| `direction_accuracy_pct` | Direction prediction accuracy (expected direction matches actual) |
+| `win_rate_pct` | Win rate (wins / (wins + losses), excludes neutral) |
+| `avg_stock_return_pct` | Average stock return percentage |
+| `avg_simulated_return_pct` | Average simulated execution return (including SL/TP exits) |
+| `stop_loss_trigger_rate` | Stop-loss trigger rate (only counts records with SL configured) |
+| `take_profit_trigger_rate` | Take-profit trigger rate (only counts records with TP configured) |
 
 ---
 
@@ -540,6 +625,7 @@ FastAPI provides RESTful API service for configuration management and triggering
 - **Configuration Management** - View/modify watchlist
 - **Quick Analysis** - Trigger analysis via API
 - **Real-time Progress** - Analysis task status updates in real-time, supports parallel tasks
+- **Backtest Validation** - Evaluate historical analysis accuracy, query direction win rate and simulated returns
 - **API Documentation** - Visit `/docs` for Swagger UI
 
 ### API Endpoints
@@ -550,6 +636,10 @@ FastAPI provides RESTful API service for configuration management and triggering
 | `/api/v1/analysis/tasks` | GET | Query task list |
 | `/api/v1/analysis/status/{task_id}` | GET | Query task status |
 | `/api/v1/history` | GET | Query analysis history |
+| `/api/v1/backtest/run` | POST | Trigger backtest |
+| `/api/v1/backtest/results` | GET | Query backtest results (paginated) |
+| `/api/v1/backtest/performance` | GET | Get overall backtest performance |
+| `/api/v1/backtest/performance/{code}` | GET | Get per-stock backtest performance |
 | `/api/health` | GET | Health check |
 | `/docs` | GET | API Swagger documentation |
 
@@ -565,6 +655,25 @@ curl -X POST http://127.0.0.1:8000/api/v1/analysis/analyze \
 
 # Query task status
 curl http://127.0.0.1:8000/api/v1/analysis/status/<task_id>
+
+# Trigger backtest (all stocks)
+curl -X POST http://127.0.0.1:8000/api/v1/backtest/run \
+  -H 'Content-Type: application/json' \
+  -d '{"force": false}'
+
+# Trigger backtest (specific stock)
+curl -X POST http://127.0.0.1:8000/api/v1/backtest/run \
+  -H 'Content-Type: application/json' \
+  -d '{"code": "600519", "force": false}'
+
+# Query overall backtest performance
+curl http://127.0.0.1:8000/api/v1/backtest/performance
+
+# Query per-stock backtest performance
+curl http://127.0.0.1:8000/api/v1/backtest/performance/600519
+
+# Paginated backtest results
+curl "http://127.0.0.1:8000/api/v1/backtest/results?page=1&limit=20"
 ```
 
 ### Custom Configuration
@@ -580,6 +689,7 @@ python main.py --serve-only --host 0.0.0.0 --port 8888
 | Type | Format | Examples |
 |------|------|------|
 | A-shares | 6-digit number | `600519`, `000001`, `300750` |
+| BSE (Beijing) | 8/4/92 prefix, 6-digit | `920748`, `838163`, `430047` |
 | HK stocks | hk + 5-digit number | `hk00700`, `hk09988` |
 
 ### Notes

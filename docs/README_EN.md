@@ -49,7 +49,7 @@ English | [简体中文](../README.md) | [繁體中文](README_CHT.md)
 |------|----------|
 | LLMs | Gemini (free), OpenAI-compatible, DeepSeek, Qwen, Claude, Ollama |
 | Market Data | AkShare, Tushare, Pytdx, Baostock, YFinance |
-| News Search | Tavily, SerpAPI, Bocha, Brave |
+| News Search | Tavily, SerpAPI, Bocha, Brave, MiniMax |
 
 ### Built-in Trading Rules
 
@@ -97,7 +97,7 @@ Go to your forked repo → `Settings` → `Secrets and variables` → `Actions` 
 | `TELEGRAM_MESSAGE_THREAD_ID` | Telegram Topic ID (For sending to topics) | Optional |
 | `DISCORD_WEBHOOK_URL` | Discord Webhook URL | Optional |
 | `DISCORD_BOT_TOKEN` | Discord Bot Token (choose one with Webhook) | Optional |
-| `DISCORD_CHANNEL_ID` | Discord Channel ID (required when using Bot) | Optional |
+| `DISCORD_MAIN_CHANNEL_ID` | Discord Channel ID (required when using Bot) | Optional |
 | `EMAIL_SENDER` | Sender email (e.g., `xxx@qq.com`) | Optional |
 | `EMAIL_PASSWORD` | Email authorization code (not login password) | Optional |
 | `EMAIL_RECEIVERS` | Receiver emails (comma-separated, leave empty to send to yourself) | Optional |
@@ -121,9 +121,11 @@ Go to your forked repo → `Settings` → `Secrets and variables` → `Actions` 
 |------------|------|:----:|
 | `STOCK_LIST` | Watchlist codes, e.g., `600519,AAPL,hk00700` | ✅ |
 | `TAVILY_API_KEYS` | [Tavily](https://tavily.com/) Search API (for news) | Recommended |
+| `MINIMAX_API_KEYS` | [MiniMax](https://platform.minimaxi.com/) Coding Plan Web Search (structured search results) | Optional |
 | `BRAVE_API_KEYS` | [Brave Search](https://brave.com/search/api/) API (privacy-focused, US stocks optimized) | Optional |
 | `SERPAPI_API_KEYS` | [SerpAPI](https://serpapi.com/baidu-search-api?utm_source=github_daily_stock_analysis) Backup search | Optional |
 | `BOCHA_API_KEYS` | [Bocha Search](https://open.bocha.cn/) Web Search API (Chinese search optimized, supports AI summaries, multiple keys comma-separated) | Optional |
+| `SEARXNG_BASE_URLS` | SearXNG self-hosted instances (quota-free fallback, enable format: json in settings.yml) | Optional |
 | `TUSHARE_TOKEN` | [Tushare Pro](https://tushare.pro/weborder/#/login?reg=834638 ) Token | Optional |
 | `WECHAT_MSG_TYPE` | WeChat Work message type, default `markdown`, set to `text` for plain markdown text | Optional |
 | `AGENT_MODE` | Enable Agent strategy chat mode (`true`/`false`, default `false`) | Optional |
@@ -254,7 +256,7 @@ DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/xxx/yyy
 Bot:
 ```bash
 DISCORD_BOT_TOKEN=your_bot_token
-DISCORD_CHANNEL_ID=your_channel_id
+DISCORD_MAIN_CHANNEL_ID=your_channel_id
 ```
 
 ### 3. Email
